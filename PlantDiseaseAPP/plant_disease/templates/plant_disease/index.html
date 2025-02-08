@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plant Disease Detection System</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f7fa;
+      color: #333;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #e0e0e0;
+      margin-bottom: 20px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+    }
+
+    .logo h1 {
+      margin: 0;
+      font-size: 24px;
+      color: #2c7744;
+    }
+
+    .logo-icon {
+      margin-right: 10px;
+      color: #2c7744;
+    }
+
+    .main-content {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 20px;
+      height: calc(100vh - 200px);
+    }
+
+    .video-panel {
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      overflow: hidden;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .video-container {
+      position: relative;
+      width: 100%;
+      background-color: #000;
+      aspect-ratio: 16/9;
+      min-height: 0;
+      flex: 1;
+    }
+
+    .video-feed {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .video-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    .video-overlay.active {
+      opacity: 1;
+    }
+
+    .view-controls {
+      padding: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: transparent;
+    }
+
+    .toggle-btn {
+      background-color: #fff;
+      border: 1px solid #ddd;
+      border-radius: 30px;
+      padding: 8px 15px;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      position: relative;
+      cursor: pointer;
+      min-width: 240px;
+    }
+
+    .toggle-option {
+      padding: 5px 15px;
+      border-radius: 20px;
+      cursor: pointer;
+      z-index: 1;
+      transition: color 0.3s ease;
+      flex: 1;
+      text-align: center;
+      font-weight: 500;
+    }
+
+    .toggle-option.active {
+      color: #fff;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: calc(50% - 4px);
+      height: calc(100% - 8px);
+      background-color: #2c7744;
+      border-radius: 20px;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .toggle-btn:hover .toggle-slider {
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+
+    .toggle-btn:active .toggle-slider {
+      transform: scale(0.98);
+    }
+
+    .view-controls .right-controls {
+      display: flex;
+      gap: 10px;
+    }
+
+    .control-btn {
+      background-color: #2c7744;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 8px 15px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: background-color 0.2s;
+    }
+
+    .control-btn:hover {
+      background-color: #236035;
+    }
+
+    .control-btn.secondary {
+      background-color: #f0f0f0;
+      color: #333;
+      border: 1px solid #ddd;
+    }
+
+    .control-btn.secondary:hover {
+      background-color: #e0e0e0;
+    }
+
+    .analysis-panel {
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 15px;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #fff;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .panel-header h2 {
+      margin: 0;
+      font-size: 18px;
+      color: #2c7744;
+    }
+
+    .panel-content {
+      flex: 1;
+      padding: 15px;
+      overflow-y: auto;
+      height: calc(100% - 60px); /* Subtract header height */
+    }
+
+    .analysis-card {
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 10px;
+      background-color: #fff;
+    }
+
+    .analysis-card h3 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .confidence-badge {
+      background-color: #e3f2fd;
+      color: #0d47a1;
+      font-size: 14px;
+      padding: 3px 8px;
+      border-radius: 12px;
+    }
+
+    .high-confidence {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+    }
+
+    .medium-confidence {
+      background-color: #fff3e0;
+      color: #e65100;
+    }
+
+    .low-confidence {
+      background-color: #ffebee;
+      color: #c62828;
+    }
+
+    .progress-bar {
+      height: 6px;
+      background-color: #e0e0e0;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background-color: #2c7744;
+      border-radius: 3px;
+    }
+
+    .detection-image {
+      width: 100%;
+      height: 120px;
+      border-radius: 4px;
+      object-fit: cover;
+      margin-top: 10px;
+    }
+
+    .toolbar {
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 15px;
+      margin-top: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .control-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    .toggle-switch {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 46px;
+      height: 24px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 24px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: #2c7744;
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(22px);
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 14px;
+      color: #666;
+    }
+
+    .indicator {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: #4caf50;
+    }
+
+    .status-text {
+      font-weight: 500;
+    }
+
+    /* History panel styles */
+    .history-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 300px;
+      height: 100%;
+      background-color: #fff;
+      box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .history-panel.open {
+      transform: translateX(0);
+    }
+
+    .history-header {
+      padding: 15px;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .history-header h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    .history-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 15px;
+    }
+
+    .history-item {
+      border-bottom: 1px solid #eee;
+      padding: 10px 0;
+      cursor: pointer;
+      display: flex;
+      gap: 10px;
+    }
+
+    .history-thumbnail {
+      width: 70px;
+      height: 70px;
+      border-radius: 4px;
+      object-fit: cover;
+    }
+
+    .history-details {
+      flex: 1;
+    }
+
+    .history-item h4 {
+      margin: 0 0 5px 0;
+      font-size: 14px;
+    }
+
+    .history-item p {
+      margin: 0;
+      font-size: 12px;
+      color: #666;
+    }
+
+    .history-timestamp {
+      font-size: 11px;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <svg class="logo-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2v8"></path>
+          <path d="M5 5.3C2.4 7.7 2.4 11.3 5 13.7c2.6 2.4 7.4 2.4 10 0 2.6-2.4 2.6-6.1 0-8.4C13.4 3.9 8.6 3.9 6 6.3"></path>
+          <path d="M8 20c0-4 8-4 8 0"></path>
+        </svg>
+        <h1>Plant Disease Detection System</h1>
+      </div>
+    </header>
+
+   <div class="main-content">
+      <div class="video-section">
+        <div class="video-panel">
+          <div class="video-container">
+            <img id="video-feed" class="video-feed" src="{% url 'video_feed' %}" alt="Live video feed" />
+          </div>
+          <div class="view-controls" style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <div class="toggle-btn">
+              <div class="toggle-slider"></div>
+              <div class="toggle-option active" data-view="normal">Normal View</div>
+              <div class="toggle-option" data-view="overlay">Detection Overlay</div>
+            </div>
+            <div class="right-controls">
+              <button class="control-btn" id="capture-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                  <circle cx="12" cy="13" r="4"></circle>
+                </svg>
+                Capture Image
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="analysis-panel">
+        <div class="panel-header">
+          <h2>Disease Analysis</h2>
+        </div>
+        <div class="panel-content">
+          <div class="analysis-card">
+            <h3>
+              Powdery Mildew
+              <span class="confidence-badge high-confidence">92%</span>
+            </h3>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 92%"></div>
+            </div>
+          </div>
+
+          <div class="analysis-card">
+            <h3>
+              Leaf Spot
+              <span class="confidence-badge medium-confidence">78%</span>
+            </h3>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 78%"></div>
+            </div>
+          </div>
+
+          <div class="analysis-card">
+            <h3>
+              Healthy Tissue
+              <span class="confidence-badge high-confidence">95%</span>
+            </h3>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 95%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="control-group">
+        <button class="control-btn" id="history-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 8v4l3 3"></path>
+            <circle cx="12" cy="12" r="10"></circle>
+          </svg>
+          View History
+        </button>
+        <button class="control-btn secondary" id="export-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Export Results
+        </button>
+      </div>
+    </div>
+
+    <!-- History Panel -->
+    <div class="history-panel" id="history-panel">
+      <div class="history-header">
+        <h2>Scan History</h2>
+        <button class="close-btn" id="close-history">×</button>
+      </div>
+      <div class="history-content">
+        <div class="history-item">
+          <img src="https://placehold.co/70x70/2c7744/ffffff?text=History" alt="History Thumbnail" class="history-thumbnail">
+          <div class="history-details">
+            <h4>Powdery Mildew Detection</h4>
+            <p>Confidence: 92%</p>
+            <span class="history-timestamp">Today, 14:32</span>
+          </div>
+        </div>
+
+        <div class="history-item">
+          <img src="https://placehold.co/70x70/2c7744/ffffff?text=History" alt="History Thumbnail" class="history-thumbnail">
+          <div class="history-details">
+            <h4>Leaf Spot Detection</h4>
+            <p>Confidence: 78%</p>
+            <span class="history-timestamp">Today, 14:28</span>
+          </div>
+        </div>
+
+        <div class="history-item">
+          <img src="https://placehold.co/70x70/2c7744/ffffff?text=History" alt="History Thumbnail" class="history-thumbnail">
+          <div class="history-details">
+            <h4>Healthy Scan</h4>
+            <p>No diseases detected</p>
+            <span class="history-timestamp">Today, 13:45</span>
+          </div>
+        </div>
+
+        <div class="history-item">
+          <img src="https://placehold.co/70x70/2c7744/ffffff?text=History" alt="History Thumbnail" class="history-thumbnail">
+          <div class="history-details">
+            <h4>Mosaic Virus Detection</h4>
+            <p>Confidence: 86%</p>
+            <span class="history-timestamp">Yesterday, 16:12</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+  // Select the video element
+  const video = document.querySelector('.video-feed');
+
+  // Request access to the webcam
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(function(stream) {
+        video.srcObject = stream; // Set the video source to the webcam stream
+      })
+      .catch(function(err) {
+        console.error("Error accessing webcam: ", err);
+      });
+  } else {
+    alert('getUserMedia not supported in this browser.');
+  }
+</script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // View toggle functionality
+      const toggleOptions = document.querySelectorAll('.toggle-option');
+      const toggleSlider = document.querySelector('.toggle-slider');
+      const videoFeed = document.getElementById('video-feed');
+      const analysisPanel = document.querySelector('.panel-content');
+      const historyContent = document.querySelector('.history-content');
+
+      // Initialize video feed
+      videoFeed.src = "{% url 'video_feed' %}";
+
+      // Set up EventSource for analysis data
+      let analysisSource = null;
+
+      function setupAnalysisFeed() {
+        if (analysisSource) {
+          analysisSource.close();
+        }
+        
+        analysisSource = new EventSource('{% url "analysis_feed" %}');
+        
+        analysisSource.onmessage = function(event) {
+          try {
+            const analysisData = JSON.parse(event.data);
+            updateAnalysisPanel(analysisData);
+          } catch (error) {
+            console.error('Error parsing analysis data:', error);
+          }
+        };
+
+        analysisSource.onerror = function(error) {
+          console.error('EventSource error:', error);
+          // Try to reconnect after a short delay
+          setTimeout(() => {
+            if (analysisSource) {
+              analysisSource.close();
+              setupAnalysisFeed();
+            }
+          }, 1000);
+        };
+      }
+
+      // Initial setup
+      setupAnalysisFeed();
+
+      function updateAnalysisPanel(analysisData) {
+        // Clear existing analysis cards
+        analysisPanel.innerHTML = '';
+
+        // Create cards for each detected disease
+        analysisData.forEach(disease => {
+          const card = createAnalysisCard(
+            disease.name,
+            disease.confidence
+          );
+          analysisPanel.appendChild(card);
+        });
+      }
+
+      function createAnalysisCard(name, confidence) {
+        const card = document.createElement('div');
+        card.className = 'analysis-card';
+
+        const confidencePercent = Math.round(confidence * 100);
+        const confidenceClass = confidencePercent > 80 ? 'high-confidence' : 
+                              confidencePercent > 60 ? 'medium-confidence' : 
+                              'low-confidence';
+
+        card.innerHTML = `
+          <h3>
+            ${name}
+            <span class="confidence-badge ${confidenceClass}">${confidencePercent}%</span>
+          </h3>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: ${confidencePercent}%"></div>
+          </div>
+        `;
+
+        return card;
+      }
+
+      // Capture button functionality
+      const captureBtn = document.getElementById('capture-btn');
+      captureBtn.addEventListener('click', async function() {
+        try {
+          const response = await fetch('{% url "capture_image" %}');
+          const data = await response.json();
+          
+          if (data.success) {
+            // Update button text
+            this.innerHTML = `
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                <circle cx="12" cy="13" r="4"></circle>
+              </svg>
+              Captured!
+            `;
+
+            // Add to history panel
+            addToHistory(data);
+
+            setTimeout(() => {
+              this.innerHTML = `
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                  <circle cx="12" cy="13" r="4"></circle>
+                </svg>
+                Capture Image
+              `;
+            }, 1500);
+          } else {
+            alert('Failed to capture image: ' + data.error);
+          }
+        } catch (error) {
+          console.error('Error capturing image:', error);
+          alert('Failed to capture image');
+        }
+      });
+
+      function addToHistory(captureData) {
+        const historyItem = document.createElement('div');
+        historyItem.className = 'history-item';
+        
+        const timestamp = new Date().toLocaleString();
+        const highestConfidence = Math.max(...captureData.analysis.map(a => a.confidence));
+        const mainDisease = captureData.analysis.find(a => a.confidence === highestConfidence);
+        
+        historyItem.innerHTML = `
+          <img src="/static/captures/${captureData.filename}" alt="Capture" class="history-thumbnail">
+          <div class="history-details">
+            <h4>${mainDisease.name}</h4>
+            <p>Confidence: ${Math.round(highestConfidence * 100)}%</p>
+            <span class="history-timestamp">${timestamp}</span>
+          </div>
+        `;
+        
+        // Add click handler to show analysis
+        historyItem.addEventListener('click', () => {
+          updateAnalysisPanel(captureData.analysis);
+          historyPanel.classList.remove('open');
+        });
+        
+        historyContent.insertBefore(historyItem, historyContent.firstChild);
+      }
+
+      // History panel functionality
+      const historyBtn = document.getElementById('history-btn');
+      const closeHistoryBtn = document.getElementById('close-history');
+      const historyPanel = document.getElementById('history-panel');
+
+      // Load history on page load
+      async function loadHistory() {
+        try {
+          const response = await fetch('{% url "get_history" %}');
+          const data = await response.json();
+          
+          // Clear existing history
+          historyContent.innerHTML = '';
+          
+          // Add each capture to history
+          data.history.forEach(capture => {
+            addToHistory(capture);
+          });
+        } catch (error) {
+          console.error('Error loading history:', error);
+        }
+      }
+
+      // Load history when opening panel
+      historyBtn.addEventListener('click', function() {
+        loadHistory();
+        historyPanel.classList.add('open');
+      });
+
+      closeHistoryBtn.addEventListener('click', function() {
+        historyPanel.classList.remove('open');
+      });
+
+      // Export functionality
+      const exportBtn = document.getElementById('export-btn');
+      exportBtn.addEventListener('click', async function() {
+        try {
+          const response = await fetch('{% url "export_results" %}');
+          if (response.ok) {
+            // Get the blob from the response
+            const blob = await response.blob();
+            
+            // Create a download link
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            
+            // Set the filename from the Content-Disposition header or use a default
+            const contentDisposition = response.headers.get('Content-Disposition');
+            const filename = contentDisposition 
+              ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+              : `plant_disease_captures_${new Date().toISOString().slice(0,19).replace(/[:]/g, '')}.zip`;
+            
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            
+            // Clean up
+            window.URL.revokeObjectURL(url);
+            a.remove();
+          } else {
+            const data = await response.json();
+            alert('Failed to export: ' + data.error);
+          }
+        } catch (error) {
+          console.error('Error exporting results:', error);
+          alert('Failed to export results');
+        }
+      });
+
+      toggleOptions.forEach(option => {
+        option.addEventListener('click', function() {
+          // Update active state and text colors
+          toggleOptions.forEach(opt => {
+            opt.classList.remove('active');
+            opt.style.color = ''; // Reset color to default
+          });
+          this.classList.add('active');
+          this.style.color = '#fff'; // Set active text color
+
+          // Move slider with smooth animation
+          const isOverlay = this.dataset.view === 'overlay';
+          toggleSlider.style.transform = isOverlay ? 'translateX(100%)' : 'translateX(0)';
+
+          // Add transition effect to the slider
+          toggleSlider.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+
+          // Update video feed source
+          const currentSrc = videoFeed.src;
+          const baseUrl = currentSrc.split('?')[0];
+          videoFeed.src = isOverlay ? `${baseUrl}?overlay=true` : baseUrl;
+        });
+      });
+
+      // Initialize the active state
+      const activeOption = document.querySelector('.toggle-option.active');
+      if (activeOption) {
+        activeOption.style.color = '#fff';
+      }
+
+      // Handle video feed errors
+      videoFeed.onerror = function() {
+        console.error('Error loading video feed');
+      };
+
+      // Cleanup on page unload
+      window.addEventListener('beforeunload', function() {
+        if (analysisSource) {
+          analysisSource.close();
+        }
+      });
+    });
+  </script>
+</body>
+</html>
