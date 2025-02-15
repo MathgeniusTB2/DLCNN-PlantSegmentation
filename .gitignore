@@ -4,6 +4,8 @@ env/
 .env/
 .venv/
 ENV/
+PlantDiseaseAPP/.venv/
+__MACOSX/
 
 # Python bytecode
 __pycache__/
@@ -36,4 +38,11 @@ staticfiles/
 
 # Project specific
 captures/
-uploads/ 
+uploads/
+
+# Large model files
+*.pt
+*.pth
+*.h5
+*.weights
+PlantDiseaseAPP/plant_disease/best.pt 
