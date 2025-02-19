@@ -1,7 +1,9 @@
 Django>=4.2.0
 opencv-python>=4.8.0
-numpy>=1.24.0
+numpy==1.26.4
 Pillow>=10.0.0
 python-dotenv>=1.0.0
 channels>=4.0.0
-daphne>=4.0.0 
+daphne>=4.0.0
+ultralytics
+djitellopy
