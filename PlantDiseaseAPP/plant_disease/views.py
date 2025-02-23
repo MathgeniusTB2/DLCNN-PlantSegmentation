@@ -1,21 +1,53 @@
 from django.shortcuts import render
 from django.http import StreamingHttpResponse, HttpResponse, JsonResponse
-from ultralytics import YOLO
-from djitellopy import Tello
 from pathlib import Path
 from django.conf import settings
 import cv2
 import time
 import json
-import base64
-import os
+import logging
 from datetime import datetime
 import zipfile
 import io
 
-# Load YOLOv8 model
+logger = logging.getLogger(__name__)
+
+# Model weights - use a trained model if present, otherwise fall back to a
+# pretrained YOLO model so the app works out of the box.
 WEIGHTS = Path(settings.BASE_DIR) / "plant_disease" / "best.pt"
-model = YOLO(WEIGHTS)
+FALLBACK_WEIGHTS = "yolov8n.pt"
+
+_model = None
+
+
+def get_model():
+    """Load the detection model lazily so the app can boot without weights."""
+    global _model
+    if _model is not None:
+        return _model
+    from ultralytics import YOLO
+    if WEIGHTS.exists():
+        _model = YOLO(WEIGHTS)
+        logger.info("Loaded custom model weights from %s", WEIGHTS)
+    else:
+        logger.warning(
+            "%s not found - falling back to %s. Place your trained model at that "
+            "path for best results.", WEIGHTS, FALLBACK_WEIGHTS
+        )
+        _model = YOLO(FALLBACK_WEIGHTS)
+    return _model
+
+
+def class_name(cls):
+    """Resolve a class index to a human-readable name."""
+    names = getattr(get_model(), "names", None)
+    if names:
+        name = names.get(cls)
+        if name:
+            return name
+    if 0 <= cls < len(DISEASE_CLASSES):
+        return DISEASE_CLASSES[cls]
+    return f"class {cls}"
 
 # Create captures directory if it doesn't exist
 CAPTURES_DIR = Path(settings.BASE_DIR) / "plant_disease" / "static" / "captures"
@@ -74,6 +106,7 @@ webcam = None
 
 def initialize_drone():
     global drone
+    from djitellopy import Tello
     try:
         drone = Tello()
         drone.connect()
@@ -121,7 +154,7 @@ def generate_frames(source_type='webcam', show_overlay=True):
 
         if show_overlay:
             # Run YOLO inference on the frame
-            results = model(frame_rgb)
+            results = get_model()(frame_rgb)
 
             # Process results and add disease names
             for result in results:
@@ -132,7 +165,7 @@ def generate_frames(source_type='webcam', show_overlay=True):
                     conf = float(box.conf[0])
                     
                     # Get disease name from class index
-                    disease_name = DISEASE_CLASSES[cls]
+                    disease_name = class_name(cls)
                     
                     # Add label with disease name and confidence
                     label = f"{disease_name}: {conf:.2f}"
@@ -177,7 +210,7 @@ def generate_analysis(source_type='webcam'):
         analysis_data = []
 
         # Run YOLO inference on the frame
-        results = model(frame_rgb)
+        results = get_model()(frame_rgb)
 
         # Process results and add disease names
         for result in results:
@@ -188,7 +221,7 @@ def generate_analysis(source_type='webcam'):
                 conf = float(box.conf[0])
                 
                 # Get disease name from class index
-                disease_name = DISEASE_CLASSES[cls]
+                disease_name = class_name(cls)
                 
                 # Add to analysis data
                 analysis_data.append({
@@ -277,7 +310,7 @@ def capture_image(request):
     filepath = CAPTURES_DIR / filename
     
     # Run YOLO inference on the frame
-    results = model(frame)
+    results = get_model()(frame)
     
     # Draw detection boxes on the frame
     for result in results:
@@ -288,7 +321,7 @@ def capture_image(request):
             conf = float(box.conf[0])
             
             # Get disease name from class index
-            disease_name = DISEASE_CLASSES[cls]
+            disease_name = class_name(cls)
             
             # Add label with disease name and confidence
             label = f"{disease_name}: {conf:.2f}"
@@ -311,7 +344,7 @@ def capture_image(request):
         for box in boxes:
             cls = int(box.cls[0])
             conf = float(box.conf[0])
-            disease_name = DISEASE_CLASSES[cls]
+            disease_name = class_name(cls)
             analysis_data.append({
                 'name': disease_name,
                 'confidence': float(conf),

@@ -1,0 +1,7 @@
+# Extra dependencies required to run the training notebook (a3_part_C.ipynb).
+# These are only needed for model training/evaluation, not for the web app.
+torch>=2.0.0
+torchvision>=0.15.0
+pycocotools>=2.0.0
+numpy==1.26.4
+jupyterlab>=4.0.0
