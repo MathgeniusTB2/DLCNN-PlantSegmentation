@@ -68,9 +68,9 @@ Controls (drone_control.py): `W/S/A/D` move, space up, `X` down, Enter takeoff,
 
 ## Training the model
 
-The notebook `a3_part_C.ipynb` trains YOLOv8l and Faster R-CNN detectors on the
-`plantsegv3` dataset (COCO-style annotations). The dataset is **not** committed
-to this repo; place it at `PlantDiseaseAPP/plantsegv3/` with:
+The notebook `a3_part_C.ipynb` trains YOLOv8l, YOLOv8x and Faster R-CNN
+detectors on the `plantsegv3` dataset (COCO-style annotations). The dataset is
+**not** committed to this repo; place it at `PlantDiseaseAPP/plantsegv3/` with:
 
 ```
 plantsegv3/
@@ -85,3 +85,17 @@ Install training dependencies with `pip install -r requirements-training.txt`,
 then run the notebook top to bottom. The trained weights are written to
 `runs/detect/*/weights/best.pt` — copy one to
 `PlantDiseaseAPP/plant_disease/best.pt` for the web app.
+
+### Dataset
+
+The models are trained on **PlantSeg: A Large-Scale In-the-wild Dataset for
+Plant Disease Segmentation** — 11,400+ images of 115 plant diseases with
+instance-level annotations.
+
+- Paper: https://arxiv.org/abs/2409.04038
+- Download (Zenodo): https://zenodo.org/records/14935094
+- Project: https://github.com/tqwei05/PlantSeg
+
+> Wei, T., Chen, Z., Yu, X., Chapman, S., Melloy, P., Huang, Z. "PlantSeg: A
+> Large-Scale In-the-wild Dataset for Plant Disease Segmentation." arXiv
+> preprint arXiv:2409.04038, 2024.
