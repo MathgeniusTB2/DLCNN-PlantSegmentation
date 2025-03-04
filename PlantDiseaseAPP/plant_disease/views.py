@@ -15,7 +15,11 @@ logger = logging.getLogger(__name__)
 # Model weights - use a trained model if present, otherwise fall back to a
 # pretrained YOLO model so the app works out of the box.
 WEIGHTS = Path(settings.BASE_DIR) / "plant_disease" / "best.pt"
-FALLBACK_WEIGHTS = "yolov8n.pt"
+FALLBACK_WEIGHTS = f"yolov8{getattr(settings, 'MODEL_SIZE', 'n')}.pt"
+
+# Live-feed tuning (overridable via Django settings / env vars).
+INFERENCE_IMGSZ = getattr(settings, "MODEL_IMGSZ", 416)
+FRAME_SKIP = max(1, getattr(settings, "MODEL_FRAME_SKIP", 3))
 
 _model = None
 
@@ -36,6 +40,30 @@ def get_model():
         )
         _model = YOLO(FALLBACK_WEIGHTS)
     return _model
+
+
+def _detect(frame):
+    """Run inference on a frame, returning [(name, conf, x1, y1, x2, y2), ...]."""
+    detections = []
+    results = get_model().predict(frame, imgsz=INFERENCE_IMGSZ, verbose=False)
+    for result in results:
+        for box in result.boxes:
+            detections.append((
+                class_name(int(box.cls[0])),
+                float(box.conf[0]),
+                *map(int, box.xyxy[0]),
+            ))
+    return detections
+
+
+def _draw(frame_rgb, detections):
+    """Draw detection boxes/labels on a frame (cheap, no inference)."""
+    for name, conf, x1, y1, x2, y2 in detections:
+        label = f"{name}: {conf:.2f}"
+        cv2.rectangle(frame_rgb, (x1, y1), (x2, y2), (0, 255, 0), 2)
+        cv2.putText(frame_rgb, label, (x1, y1 - 10),
+                    cv2.FONT_HERSHEY_DUPLEX, 0.7, (0, 255, 0), 1)
+    return frame_rgb
 
 
 def class_name(cls):
@@ -133,7 +161,10 @@ def initialize_webcam():
 
 def generate_frames(source_type='webcam', show_overlay=True):
     global drone, webcam
-    
+
+    frame_counter = 0
+    last_detections = []
+
     while True:
         frame = None
         
@@ -153,30 +184,12 @@ def generate_frames(source_type='webcam', show_overlay=True):
             continue
 
         if show_overlay:
-            # Run YOLO inference on the frame
-            results = get_model()(frame_rgb)
-
-            # Process results and add disease names
-            for result in results:
-                boxes = result.boxes
-                for box in boxes:
-                    # Get class index and confidence
-                    cls = int(box.cls[0])
-                    conf = float(box.conf[0])
-                    
-                    # Get disease name from class index
-                    disease_name = class_name(cls)
-                    
-                    # Add label with disease name and confidence
-                    label = f"{disease_name}: {conf:.2f}"
-                    
-                    # Get box coordinates
-                    x1, y1, x2, y2 = map(int, box.xyxy[0])
-                    
-                    # Draw box and label with professional font
-                    cv2.rectangle(frame_rgb, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                    cv2.putText(frame_rgb, label, (x1, y1 - 10),
-                               cv2.FONT_HERSHEY_DUPLEX, 0.7, (0, 255, 0), 1)
+            # Run YOLO inference only every FRAME_SKIP frames to keep the live
+            # feed responsive; reuse the last detections for frames in between.
+            if frame_counter % FRAME_SKIP == 0:
+                last_detections = _detect(frame_rgb)
+            frame_rgb = _draw(frame_rgb, last_detections)
+            frame_counter += 1
 
         # Encode the frame as JPEG
         ret, buffer = cv2.imencode('.jpg', frame_rgb)
@@ -188,7 +201,10 @@ def generate_frames(source_type='webcam', show_overlay=True):
 
 def generate_analysis(source_type='webcam'):
     global drone, webcam
-    
+
+    frame_counter = 0
+    last_detections = []
+
     while True:
         frame = None
         
@@ -206,28 +222,18 @@ def generate_analysis(source_type='webcam'):
             time.sleep(0.1)  # Add small delay before next attempt
             continue
 
+        # Run inference only every FRAME_SKIP frames; reuse between runs.
+        if frame_counter % FRAME_SKIP == 0:
+            last_detections = _detect(frame_rgb)
+        frame_counter += 1
+
         # Initialize analysis data
         analysis_data = []
-
-        # Run YOLO inference on the frame
-        results = get_model()(frame_rgb)
-
-        # Process results and add disease names
-        for result in results:
-            boxes = result.boxes
-            for box in boxes:
-                # Get class index and confidence
-                cls = int(box.cls[0])
-                conf = float(box.conf[0])
-                
-                # Get disease name from class index
-                disease_name = class_name(cls)
-                
-                # Add to analysis data
-                analysis_data.append({
-                    'name': disease_name,
-                    'confidence': float(conf)  # Convert to float for JSON serialization
-                })
+        for name, conf, *_ in last_detections:
+            analysis_data.append({
+                'name': name,
+                'confidence': conf,
+            })
 
         # If no diseases detected, add healthy tissue
         if not analysis_data:

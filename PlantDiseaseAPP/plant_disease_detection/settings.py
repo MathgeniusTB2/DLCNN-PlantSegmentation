@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -129,3 +130,11 @@ MEDIA_ROOT = BASE_DIR / "plant_disease" / "static" / "captures"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Live detection tuning (used by /video_feed/ and /analysis_feed/)
+# Model size used as fallback when no trained best.pt is present (n/s/m/l/x).
+MODEL_SIZE = os.environ.get('MODEL_SIZE', 'n')
+# Inference input size for the live video feed.
+MODEL_IMGSZ = int(os.environ.get('MODEL_IMGSZ', '416'))
+# Run inference only on every Nth frame; the overlay persists between runs.
+MODEL_FRAME_SKIP = int(os.environ.get('MODEL_FRAME_SKIP', '3'))

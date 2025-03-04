@@ -49,9 +49,26 @@ overlay, per-frame disease analysis, capture history, and ZIP export.
 ## Model weights
 
 The app loads `PlantDiseaseAPP/plant_disease/best.pt` for detection. If the file
-is missing it automatically falls back to the pretrained `yolov8n.pt` model so
+is missing it automatically falls back to a pretrained `yolov8n.pt` model so
 the app runs out of the box. Place your trained model at that path for the real
 detection classes.
+
+### Live-feed tuning
+
+The streaming endpoints (`/video_feed/`, `/analysis_feed/`) can be tuned via
+environment variables so they stay responsive on a live drone/webcam feed:
+
+| Env var          | Default | Meaning                                        |
+|------------------|---------|------------------------------------------------|
+| `MODEL_SIZE`     | `n`     | Fallback model size (`n/s/m/l/x`) when `best.pt` is absent |
+| `MODEL_IMGSZ`    | `416`   | Inference input resolution                     |
+| `MODEL_FRAME_SKIP` | `3`   | Run inference only on every Nth frame; the overlay persists in between |
+
+Example:
+
+```bash
+MODEL_SIZE=s MODEL_IMGSZ=512 MODEL_FRAME_SKIP=2 python manage.py runserver
+```
 
 ## Drone (DJI Tello)
 
