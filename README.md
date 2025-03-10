@@ -3,6 +3,9 @@
 Deep-learning CNN system for plant disease detection and segmentation, with live
 video inference from a webcam or a DJI Tello drone and a Django web dashboard.
 
+See [docs/PROJECT_REPORT.md](docs/PROJECT_REPORT.md) for the full project
+write-up (dataset, training results, live-feed tuning, limitations).
+
 ## Repository structure
 
 ```
