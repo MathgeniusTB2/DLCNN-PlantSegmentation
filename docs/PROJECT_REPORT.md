@@ -38,12 +38,27 @@ quantity) were clamped to image bounds during conversion.
 
 ## 3. Model training
 
-Training was carried out on an AWS SageMaker GPU instance (Tesla T4), 300–1000
-epochs at `imgsz=416`, `batch=16`, with early stopping.
+The production model is a **YOLOv8s trained at `imgsz=640`** on the CETUS HPC
+(RTX PRO 6000 Blackwell), early-stopped at epoch 95 (best at 75). Training
+labels were cleaned during COCO→YOLO conversion (out-of-bounds boxes clamped),
+which the original runs lacked.
+
+**Current model (used by the web app):**
+
+| Metric | Value |
+|---|---|
+| **mAP50** | **0.319** |
+| **mAP50-95** | **0.197** |
+| Precision / Recall | 0.378 / 0.350 |
+| Val set | 1,247 images / 8,926 instances |
+| Speed (CPU @416) | 38 ms/img — **26 FPS** |
+| Speed (CPU @640) | 84 ms/img — **12 FPS** |
+
+**Previous training runs** (AWS SageMaker, Tesla T4, `imgsz=416`):
 
 | Model | Precision | Recall | mAP50 | mAP50-95 | Notes |
 |---|---|---|---|---|---|
-| **YOLOv8l** (final) | 0.419 | 0.371 | **0.352** | **0.223** | best recorded result |
+| YOLOv8l (final) | 0.419 | 0.371 | **0.352** | **0.223** | best of the old runs |
 | YOLOv8x | ~0.39 | ~0.33 | ~0.335 | ~0.211 | bigger model, no gain |
 | Faster R-CNN R50-FPN | — | — | — | — | training only; no final metrics |
 
@@ -60,8 +75,22 @@ Observations:
 
 ## 4. Live inference
 
-The web app runs detection on the live webcam/drone stream. Live-feed settings
-(env vars, see README):
+The web app runs detection on the live webcam/drone stream. Measured throughput
+of the trained YOLOv8s on a mid-range laptop CPU (no GPU):
+
+| imgsz | Latency | FPS |
+|---|---|---|
+| 416 | 38 ms | **26 FPS** |
+| 512 | 52 ms | **19 FPS** |
+| 640 | 84 ms | **12 FPS** |
+
+With the default feed settings (`imgsz=416`, `MODEL_FRAME_SKIP=3`) classification
+never bottlenecks a Tello's ~10–30 fps stream.
+
+A simulated drone flyover of PlantSeg crops (live detections with the HUD) is
+shown in [`docs/demo_drone_scan.gif`](docs/demo_drone_scan.gif).
+
+Live-feed settings (env vars, see README):
 
 - `MODEL_SIZE` — fallback model size `n/s/m/l/x` when `best.pt` is absent.
 - `MODEL_IMGSZ` — inference resolution (default 416; 512–640 for accuracy).

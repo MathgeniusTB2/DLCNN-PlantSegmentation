@@ -56,6 +56,32 @@ is missing it automatically falls back to a pretrained `yolov8n.pt` model so
 the app runs out of the box. Place your trained model at that path for the real
 detection classes.
 
+### Model performance
+
+Trained on PlantSeg (115 classes, in-the-wild). The bundled model is a
+**YOLOv8s** trained at `imgsz=640` on cleaned labels (out-of-bounds boxes
+clamped):
+
+| Metric | Value |
+|---|---|
+| mAP50 | **0.319** |
+| mAP50-95 | 0.197 |
+| Precision / Recall | 0.378 / 0.350 |
+| Val set | 1,247 images / 8,926 instances |
+
+Live inference speed (CPU benchmark, trained model, 115 classes):
+
+| imgsz | Latency | FPS |
+|---|---|---|
+| 416 | 38 ms | **26 FPS** |
+| 512 | 52 ms | **19 FPS** |
+| 640 | 84 ms | **12 FPS** |
+
+On the default live feed (`imgsz=416`, frame-skip 3) that's a comfortable
+real-time drone/webcam stream. See [docs/PROJECT_REPORT.md](docs/PROJECT_REPORT.md)
+for the full training history and a drone-scan demo
+([`docs/demo_drone_scan.gif`](docs/demo_drone_scan.gif)).
+
 ### Live-feed tuning
 
 The streaming endpoints (`/video_feed/`, `/analysis_feed/`) can be tuned via
