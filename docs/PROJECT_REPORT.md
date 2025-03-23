@@ -87,8 +87,9 @@ of the trained YOLOv8s on a mid-range laptop CPU (no GPU):
 With the default feed settings (`imgsz=416`, `MODEL_FRAME_SKIP=3`) classification
 never bottlenecks a Tello's ~10–30 fps stream.
 
-A simulated drone flyover of PlantSeg crops (live detections with the HUD) is
-shown in [`docs/demo_drone_scan.gif`](docs/demo_drone_scan.gif).
+A simulated drone flyover of PlantSeg crops (camera-motion feed with live
+detections at the measured FPS) is shown in
+[`docs/demo_drone_scan.gif`](docs/demo_drone_scan.gif).
 
 Live-feed settings (env vars, see README):
 
