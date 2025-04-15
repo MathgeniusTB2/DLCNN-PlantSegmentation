@@ -1,10 +1,49 @@
-# DLCNN-PlantSegmentation
+<div align="center">
 
-Deep-learning CNN system for plant disease detection and segmentation, with live
-video inference from a webcam or a DJI Tello drone and a Django web dashboard.
+# 🌱 DLCNN-PlantSegmentation
 
-See [docs/PROJECT_REPORT.md](docs/PROJECT_REPORT.md) for the full project
-write-up (dataset, training results, live-feed tuning, limitations).
+**Real-time plant disease detection from webcam or DJI Tello drone feeds, built
+on YOLOv8 and served through a Django dashboard.**
+
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
+![Django](https://img.shields.io/badge/Django-4.2+-092E20?logo=django&logoColor=white)
+![YOLOv8](https://img.shields.io/badge/Ultralytics-YOLOv8-00FFFF?logo=yolo&logoColor=white)
+![PyTorch](https://img.shields.io/badge/PyTorch-2.x-EE4C2C?logo=pytorch&logoColor=white)
+
+</div>
+
+A deep-learning computer-vision system that detects **115 plant disease
+classes** in live video. The Django app streams the annotated feed from a
+webcam or a **DJI Tello drone**, shows per-frame disease analysis, and lets you
+capture and export results — with the model trained end-to-end on the
+**PlantSeg** in-the-wild dataset.
+
+![Demo](docs/demo_drone_scan.gif)
+
+---
+
+## Features
+
+- **Live YOLOv8 detection** — 115 disease classes on webcam or Tello drone
+  streams (MJPEG video + SSE analysis in parallel)
+- **Real-time on CPU** — ~26 FPS at `imgsz=416` on a mid-range laptop
+- **Frame-skip pipeline** — inference every Nth frame with persistent overlay,
+  so the feed stays smooth on modest hardware
+- **Capture & export** — one-click frame capture with annotations, history view,
+  and ZIP export
+- **Trained on real in-the-wild data** — PlantSeg (11,400+ images, 115 classes),
+  with label cleaning (out-of-bounds boxes clamped)
+- **Drop-in weights** — place your trained `best.pt` and the app uses it
+  automatically (graceful fallback to a pretrained YOLO otherwise)
+
+## Tech stack
+
+| Layer | Tools |
+|---|---|
+| Deep learning | Ultralytics **YOLOv8**, PyTorch, OpenCV |
+| Web app | **Django** 4.2+, SSE, MJPEG streaming |
+| Drone | **djitellopy** (DJI Tello API) |
+| Training | Jupyter notebook, CUDA (CETUS HPC / SageMaker) |
 
 ## Repository structure
 
@@ -17,8 +56,10 @@ PlantDiseaseAPP/
 │   ├── templates/plant_disease/ # Web dashboard
 │   └── static/captures/         # Captured/analysed images (runtime)
 └── scripts/
-    └── drone/                   # Standalone drone + webcam scripts
-a3_part_C.ipynb                  # Training notebook (YOLOv8 / Faster R-CNN)
+    └── drone/                   # Standalone drone control + demo scripts
+training_plantseg.ipynb          # Training notebook (YOLOv8 / Faster R-CNN)
+docs/PROJECT_REPORT.md           # Full project write-up
+docs/demo_drone_scan.gif         # Simulated drone flyover demo
 requirements.txt                 # Web app dependencies
 requirements-training.txt        # Notebook/training dependencies
 ```
@@ -34,38 +75,31 @@ python manage.py migrate
 python manage.py runserver
 ```
 
-Open http://localhost:8000 — the dashboard shows the live camera feed, detection
-overlay, per-frame disease analysis, capture history, and ZIP export.
+Open http://localhost:8000 — the dashboard shows the live camera feed,
+detection overlay, per-frame disease analysis, capture history, and ZIP export.
 
 ### Endpoints
 
-| URL              | Description                                  |
-|------------------|----------------------------------------------|
-| `/`              | Dashboard                                    |
-| `/video_feed/`   | MJPEG stream (`?source=webcam` or `drone`, `?overlay=true`) |
-| `/analysis_feed/`| SSE disease analysis stream                  |
-| `/capture/`      | Capture + analyse the current frame          |
-| `/history/`      | JSON capture history                         |
-| `/export/`       | Download all captures as a ZIP               |
-| `/admin/`        | Django admin                                 |
+| URL               | Description                                     |
+|-------------------|-------------------------------------------------|
+| `/`               | Dashboard                                       |
+| `/video_feed/`    | MJPEG stream (`?source=webcam` or `drone`, `?overlay=true`) |
+| `/analysis_feed/` | SSE disease analysis stream                     |
+| `/capture/`       | Capture + analyse the current frame             |
+| `/history/`       | JSON capture history                            |
+| `/export/`        | Download all captures as a ZIP                  |
+| `/admin/`         | Django admin                                    |
 
-## Model weights
+## Model performance
 
-The app loads `PlantDiseaseAPP/plant_disease/best.pt` for detection. If the file
-is missing it automatically falls back to a pretrained `yolov8n.pt` model so
-the app runs out of the box. Place your trained model at that path for the real
-detection classes.
-
-### Model performance
-
-Trained on PlantSeg (115 classes, in-the-wild). The bundled model is a
-**YOLOv8s** trained at `imgsz=640` on cleaned labels (out-of-bounds boxes
-clamped):
+The bundled model is a **YOLOv8s** trained at `imgsz=640` on PlantSeg
+(115 classes) with cleaned labels. Trained on a UTS CETUS RTX PRO 6000
+Blackwell GPU; early-stopped at epoch 95.
 
 | Metric | Value |
 |---|---|
-| mAP50 | **0.319** |
-| mAP50-95 | 0.197 |
+| **mAP50** | **0.319** |
+| **mAP50-95** | **0.197** |
 | Precision / Recall | 0.378 / 0.350 |
 | Val set | 1,247 images / 8,926 instances |
 
@@ -77,23 +111,23 @@ Live inference speed (CPU benchmark, trained model, 115 classes):
 | 512 | 52 ms | **19 FPS** |
 | 640 | 84 ms | **12 FPS** |
 
-On the default live feed (`imgsz=416`, frame-skip 3) that's a comfortable
-real-time drone/webcam stream. See [docs/PROJECT_REPORT.md](docs/PROJECT_REPORT.md)
-for the full training history and a drone-scan demo
-([`docs/demo_drone_scan.gif`](docs/demo_drone_scan.gif)).
+See [docs/PROJECT_REPORT.md](docs/PROJECT_REPORT.md) for the full training
+history, dataset details, and design trade-offs.
+
+## Model weights
+
+The app loads `PlantDiseaseAPP/plant_disease/best.pt` for detection. If the
+file is missing it automatically falls back to a pretrained `yolov8n.pt` model
+so the app runs out of the box. Drop in your trained weights at that path for
+the full 115-class detection.
 
 ### Live-feed tuning
 
-The streaming endpoints (`/video_feed/`, `/analysis_feed/`) can be tuned via
-environment variables so they stay responsive on a live drone/webcam feed:
-
-| Env var          | Default | Meaning                                        |
-|------------------|---------|------------------------------------------------|
-| `MODEL_SIZE`     | `n`     | Fallback model size (`n/s/m/l/x`) when `best.pt` is absent |
-| `MODEL_IMGSZ`    | `416`   | Inference input resolution                     |
-| `MODEL_FRAME_SKIP` | `3`   | Run inference only on every Nth frame; the overlay persists in between |
-
-Example:
+| Env var           | Default | Meaning                                           |
+|-------------------|---------|---------------------------------------------------|
+| `MODEL_SIZE`      | `n`     | Fallback model size (`n/s/m/l/x`) when `best.pt` is absent |
+| `MODEL_IMGSZ`     | `416`   | Inference input resolution                        |
+| `MODEL_FRAME_SKIP`| `3`     | Run inference every Nth frame; overlay persists between |
 
 ```bash
 MODEL_SIZE=s MODEL_IMGSZ=512 MODEL_FRAME_SKIP=2 python manage.py runserver
@@ -101,22 +135,22 @@ MODEL_SIZE=s MODEL_IMGSZ=512 MODEL_FRAME_SKIP=2 python manage.py runserver
 
 ## Drone (DJI Tello)
 
-The dashboard can stream from a Tello (`?source=drone`). Standalone scripts live
-in `PlantDiseaseAPP/scripts/drone/`:
+The dashboard streams from a Tello via `?source=drone`. Standalone scripts:
 
 ```bash
-python scripts/drone/drone_control.py    # keyboard-controlled flight + live feed
-python scripts/drone/webcam_demo.py      # webcam inference demo using best.pt
+python scripts/drone/drone_control.py          # keyboard-controlled flight + live feed
+python scripts/drone/plant_detection_demo.py   # webcam inference demo using best.pt
 ```
 
-Controls (drone_control.py): `W/S/A/D` move, space up, `X` down, Enter takeoff,
-`O/P` rotate, `Q` quit.
+Controls (`drone_control.py`): `W/S/A/D` move · space up · `X` down · Enter
+takeoff · `O/P` rotate · `Q` quit.
 
 ## Training the model
 
-The notebook `a3_part_C.ipynb` trains YOLOv8l, YOLOv8x and Faster R-CNN
-detectors on the `plantsegv3` dataset (COCO-style annotations). The dataset is
-**not** committed to this repo; place it at `PlantDiseaseAPP/plantsegv3/` with:
+The notebook [`training_plantseg.ipynb`](PlantDiseaseAPP/training_plantseg.ipynb)
+trains YOLOv8l / YOLOv8x / Faster R-CNN on the PlantSeg dataset (COCO → YOLO
+labels). The dataset is **not** committed; place it at
+`PlantDiseaseAPP/plantsegv3/`:
 
 ```
 plantsegv3/
@@ -127,16 +161,17 @@ plantsegv3/
     └── annotation_*.json
 ```
 
-Install training dependencies with `pip install -r requirements-training.txt`,
-then run the notebook top to bottom. The trained weights are written to
-`runs/detect/*/weights/best.pt` — copy one to
-`PlantDiseaseAPP/plant_disease/best.pt` for the web app.
+```bash
+pip install -r requirements-training.txt
+# run training_plantseg.ipynb top to bottom
+# copy runs/detect/*/weights/best.pt -> PlantDiseaseAPP/plant_disease/best.pt
+```
 
 ### Dataset
 
-The models are trained on **PlantSeg: A Large-Scale In-the-wild Dataset for
-Plant Disease Segmentation** — 11,400+ images of 115 plant diseases with
-instance-level annotations.
+Trained on **PlantSeg: A Large-Scale In-the-wild Dataset for Plant Disease
+Segmentation** — 11,400+ images of 115 plant diseases with instance-level
+annotations.
 
 - Paper: https://arxiv.org/abs/2409.04038
 - Download (Zenodo): https://zenodo.org/records/14935094

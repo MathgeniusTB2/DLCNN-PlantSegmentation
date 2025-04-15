@@ -14,7 +14,7 @@ aerially.
 Components:
 
 - `plant_disease` Django app — streaming views, inference, capture/export.
-- `a3_part_C.ipynb` — model training notebook (YOLOv8l / YOLOv8x / Faster R-CNN).
+- `training_plantseg.ipynb` — model training notebook (YOLOv8l / YOLOv8x / Faster R-CNN).
 - `scripts/drone/` — standalone drone control and webcam demo scripts.
 - `PlantDiseaseAPP/plant_disease/best.pt` — trained model weights (place here).
 
@@ -114,7 +114,7 @@ python manage.py migrate && python manage.py runserver
 
 - Place trained weights at `PlantDiseaseAPP/plant_disease/best.pt`.
 - Standalone drone control: `python scripts/drone/drone_control.py`.
-- Training notebook: `a3_part_C.ipynb` (needs the PlantSeg dataset staged as
+- Training notebook: `training_plantseg.ipynb` (needs the PlantSeg dataset staged as
   `PlantDiseaseAPP/plantsegv3/`).
 
 ## 6. Limitations & future work
