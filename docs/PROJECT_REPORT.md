@@ -123,7 +123,7 @@ python manage.py migrate && python manage.py runserver
 - Demo mode (no webcam/drone): the repo ships six sample frames in
   `docs/demo_images/`, so `python manage.py runserver` runs the full dashboard on
   a fresh clone; point `DEMO_IMAGES_DIR` elsewhere to use your own images.
-- Standalone drone control: `python scripts/drone/drone_control.py`.
+- Standalone drone control: `python PlantDiseaseAPP/scripts/drone/drone_control.py`.
 - Training notebook: `training_plantseg.ipynb` (needs the PlantSeg dataset staged as
   `PlantDiseaseAPP/plantsegv3/`).
 

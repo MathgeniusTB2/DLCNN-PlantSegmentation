@@ -1,7 +1,12 @@
+from pathlib import Path
+
 from ultralytics import YOLO
 import cv2
 
-model = YOLO('best.pt')  # or 'runs/detect/train/weights/best.pt'
+# Use the trained weights shipped for the web app if present, otherwise fall
+# back to a pretrained model (80 COCO classes).
+DEFAULT_WEIGHTS = Path(__file__).resolve().parent.parent.parent / "plant_disease" / "best.pt"
+model = YOLO(DEFAULT_WEIGHTS if DEFAULT_WEIGHTS.exists() else "yolov8n.pt")
 
 
 cap = cv2.VideoCapture(0)

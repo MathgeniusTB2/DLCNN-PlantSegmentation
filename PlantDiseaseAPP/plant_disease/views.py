@@ -192,7 +192,9 @@ def _read_frame(source_type):
     if source_type == 'drone':
         if drone is None:
             return None
-        return drone.get_frame_read().frame
+        # djitellopy decodes frames as RGB (PyAV to_image()); convert to BGR
+        # for the OpenCV/ultralytics pipeline.
+        return cv2.cvtColor(drone.get_frame_read().frame, cv2.COLOR_RGB2BGR)
     if source_type == 'webcam':
         if webcam is None:
             return None

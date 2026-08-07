@@ -59,11 +59,11 @@ capture and export results — with the model trained end-to-end on the
 │   │   ├── views.py                 # YOLO inference, video/analysis streaming, captures
 │   │   ├── templates/plant_disease/ # Web dashboard
 │   │   └── static/captures/         # Captured/analysed images (runtime)
-│   └── scripts/drone/               # Standalone drone control + demo scripts
+│   ├── scripts/drone/               # Standalone drone control + demo scripts
+│   └── training_plantseg.ipynb      # Training notebook (YOLOv8 + Faster R-CNN baseline)
 ├── scripts/
 │   ├── download_weights.py          # Fetch the trained 115-class weights
 │   └── benchmark.py                 # Reproduce the inference FPS table
-├── training_plantseg.ipynb          # Training notebook (YOLOv8 + Faster R-CNN baseline)
 ├── docs/
 │   ├── PROJECT_REPORT.md            # Full project write-up
 │   ├── demo_drone_scan.gif          # Simulated drone flyover demo
@@ -187,8 +187,8 @@ The dashboard screenshot above was captured this way.
 The dashboard streams from a Tello via `?source=drone`. Standalone scripts:
 
 ```bash
-python scripts/drone/drone_control.py          # keyboard-controlled flight + live feed
-python scripts/drone/plant_detection_demo.py   # webcam inference demo using best.pt
+python PlantDiseaseAPP/scripts/drone/drone_control.py          # keyboard-controlled flight + live feed
+python PlantDiseaseAPP/scripts/drone/plant_detection_demo.py   # webcam inference demo using best.pt
 ```
 
 Controls (`drone_control.py`): `W/S/A/D` move · space up · `X` down · Enter

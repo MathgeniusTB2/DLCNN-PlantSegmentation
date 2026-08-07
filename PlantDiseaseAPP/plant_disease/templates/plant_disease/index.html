@@ -584,24 +584,6 @@
     </div>
   </div>
   <script>
-  // Select the video element
-  const video = document.querySelector('.video-feed');
-
-  // Request access to the webcam
-  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(function(stream) {
-        video.srcObject = stream; // Set the video source to the webcam stream
-      })
-      .catch(function(err) {
-        console.error("Error accessing webcam: ", err);
-      });
-  } else {
-    alert('getUserMedia not supported in this browser.');
-  }
-</script>
-
-  <script>
     document.addEventListener('DOMContentLoaded', function() {
       // View toggle functionality
       const toggleOptions = document.querySelectorAll('.toggle-option');

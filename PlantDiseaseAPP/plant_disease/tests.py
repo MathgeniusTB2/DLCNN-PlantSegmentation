@@ -116,5 +116,7 @@ class DashboardTests(TestCase):
             self.assertEqual(len(views.capture_history), 1)
         finally:
             import shutil
+            for f in views.CAPTURES_DIR.glob("capture_*.jpg"):
+                f.unlink(missing_ok=True)
             shutil.rmtree(tmp_dir, ignore_errors=True)
             views.capture_history = []
