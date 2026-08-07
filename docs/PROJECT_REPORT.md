@@ -39,7 +39,7 @@ quantity) were clamped to image bounds during conversion.
 ## 3. Model training
 
 The production model is a **YOLOv8s trained at `imgsz=640`** on the CETUS HPC
-(RTX PRO 6000 Blackwell), early-stopped at epoch 95 (best at 75). Training
+(RTX PRO 6000 Blackwell), best at epoch 77 (early-stopped at 95). Training
 labels were cleaned during COCO→YOLO conversion (out-of-bounds boxes clamped),
 which the original runs lacked.
 
@@ -47,9 +47,9 @@ which the original runs lacked.
 
 | Metric | Value |
 |---|---|
-| **mAP50** | **0.319** |
-| **mAP50-95** | **0.197** |
-| Precision / Recall | 0.378 / 0.350 |
+| **mAP50** | **0.315** |
+| **mAP50-95** | **0.191** |
+| Precision / Recall | 0.393 / 0.357 |
 | Val set | 1,247 images / 8,926 instances |
 | Speed (CPU @416) | 38 ms/img — **26 FPS** |
 | Speed (CPU @640) | 84 ms/img — **12 FPS** |

@@ -24,6 +24,9 @@ REPO = "MathgeniusTB2/DLCNN-PlantSegmentation"
 RELEASES_URL = f"https://api.github.com/repos/{REPO}/releases"
 APP_WEIGHTS = Path(__file__).resolve().parent.parent / "PlantDiseaseAPP" / "plant_disease" / "best.pt"
 
+# GitHub's API rejects requests without a User-Agent header.
+HEADERS = {"User-Agent": "DLCNN-PlantSegmentation-download-weights/1.0"}
+
 UPLOAD_HINT = (
     "Upload your trained weights before running this again:\n"
     f"  1. git clone https://github.com/{REPO}\n"
@@ -33,7 +36,8 @@ UPLOAD_HINT = (
 
 
 def latest_release(version: str | None) -> dict:
-    with urllib.request.urlopen(RELEASES_URL, timeout=30) as resp:
+    req = urllib.request.Request(RELEASES_URL, headers=HEADERS)
+    with urllib.request.urlopen(req, timeout=30) as resp:
         releases = json.load(resp)
     if not releases:
         sys.exit(f"No releases found for {REPO}.\n\n{UPLOAD_HINT}")
@@ -55,7 +59,8 @@ def download(rel: dict) -> None:
     url, size = asset["browser_download_url"], asset["size"]
     APP_WEIGHTS.parent.mkdir(parents=True, exist_ok=True)
     print(f"Downloading {size / 1e6:.1f} MB from {url}")
-    with urllib.request.urlopen(url, timeout=300) as resp, \
+    req = urllib.request.Request(url, headers=HEADERS)
+    with urllib.request.urlopen(req, timeout=300) as resp, \
             open(APP_WEIGHTS, "wb") as out:
         while chunk := resp.read(1 << 20):
             out.write(chunk)

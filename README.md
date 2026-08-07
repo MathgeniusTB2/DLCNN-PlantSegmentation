@@ -97,13 +97,13 @@ detection overlay, per-frame disease analysis, capture history, and ZIP export.
 
 The production model is a **YOLOv8s** trained at `imgsz=640` on PlantSeg
 (115 classes) with cleaned labels. Trained on a UTS CETUS RTX PRO 6000
-Blackwell GPU; early-stopped at epoch 95.
+Blackwell GPU; best at epoch 77 (early-stopped at 95).
 
 | Metric | Value |
 |---|---|
-| **mAP50** | **0.319** |
-| **mAP50-95** | **0.197** |
-| Precision / Recall | 0.378 / 0.350 |
+| **mAP50** | **0.315** |
+| **mAP50-95** | **0.191** |
+| Precision / Recall | 0.393 / 0.357 |
 | Val set | 1,247 images / 8,926 instances |
 
 Live inference speed (CPU benchmark, trained model, 115 classes):
