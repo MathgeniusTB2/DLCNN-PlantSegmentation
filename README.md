@@ -9,6 +9,7 @@ on YOLOv8 and served through a Django dashboard.**
 ![Django](https://img.shields.io/badge/Django-4.2+-092E20?logo=django&logoColor=white)
 ![YOLOv8](https://img.shields.io/badge/Ultralytics-YOLOv8-00FFFF?logo=yolo&logoColor=white)
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.x-EE4C2C?logo=pytorch&logoColor=white)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 </div>
 
@@ -56,8 +57,9 @@ PlantDiseaseAPP/
 │   ├── templates/plant_disease/ # Web dashboard
 │   └── static/captures/         # Captured/analysed images (runtime)
 └── scripts/
-    └── drone/                   # Standalone drone control + demo scripts
-training_plantseg.ipynb          # Training notebook (YOLOv8 / Faster R-CNN)
+    ├── download_weights.py       # Fetch the trained 115-class weights
+    └── drone/                    # Standalone drone control + demo scripts
+training_plantseg.ipynb          # Training notebook (YOLOv8 + Faster R-CNN baseline)
 docs/PROJECT_REPORT.md           # Full project write-up
 docs/demo_drone_scan.gif         # Simulated drone flyover demo
 requirements.txt                 # Web app dependencies
@@ -70,6 +72,7 @@ requirements-training.txt        # Notebook/training dependencies
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+python scripts/download_weights.py # optional: fetch the trained 115-class model
 cd PlantDiseaseAPP
 python manage.py migrate
 python manage.py runserver
@@ -92,7 +95,7 @@ detection overlay, per-frame disease analysis, capture history, and ZIP export.
 
 ## Model performance
 
-The bundled model is a **YOLOv8s** trained at `imgsz=640` on PlantSeg
+The production model is a **YOLOv8s** trained at `imgsz=640` on PlantSeg
 (115 classes) with cleaned labels. Trained on a UTS CETUS RTX PRO 6000
 Blackwell GPU; early-stopped at epoch 95.
 
@@ -118,8 +121,21 @@ history, dataset details, and design trade-offs.
 
 The app loads `PlantDiseaseAPP/plant_disease/best.pt` for detection. If the
 file is missing it automatically falls back to a pretrained `yolov8n.pt` model
-so the app runs out of the box. Drop in your trained weights at that path for
-the full 115-class detection.
+(80 COCO classes) so the app runs out of the box — but for the **full 115
+plant-disease classes** you need the trained weights.
+
+Download them from the [releases page](https://github.com/MathgeniusTB2/DLCNN-PlantSegmentation/releases)
+with the helper script:
+
+```bash
+python scripts/download_weights.py                 # latest release
+python scripts/download_weights.py --version v1.0  # specific tag
+```
+
+or drop your own trained weights at that path — the app picks them up
+automatically. Note: the COCO-fallback model labels will be nonsense for plant
+diseases (it detects generic objects), so always fetch `best.pt` for real
+detection.
 
 ### Live-feed tuning
 
@@ -148,23 +164,27 @@ takeoff · `O/P` rotate · `Q` quit.
 ## Training the model
 
 The notebook [`training_plantseg.ipynb`](PlantDiseaseAPP/training_plantseg.ipynb)
-trains YOLOv8l / YOLOv8x / Faster R-CNN on the PlantSeg dataset (COCO → YOLO
-labels). The dataset is **not** committed; place it at
-`PlantDiseaseAPP/plantsegv3/`:
+trains a YOLOv8 detector (size configurable via `MODEL_SIZE`) on the PlantSeg
+dataset, with an optional Faster R-CNN baseline in the appendix. It runs top
+to bottom: COCO → YOLO label conversion (out-of-bounds boxes clamped) → train
+→ evaluate → sample inference → copies `best.pt` into the web app.
+
+```bash
+pip install -r requirements-training.txt
+# run training_plantseg.ipynb top to bottom
+# the final cell copies best.pt to PlantDiseaseAPP/plant_disease/best.pt
+```
+
+The dataset is **not** committed; place it at `PlantDiseaseAPP/plantsegv3/`:
 
 ```
 plantsegv3/
 ├── images/
 │   ├── train/
+│   ├── val/
 │   └── test/
 └── masks/
-    └── annotation_*.json
-```
-
-```bash
-pip install -r requirements-training.txt
-# run training_plantseg.ipynb top to bottom
-# copy runs/detect/*/weights/best.pt -> PlantDiseaseAPP/plant_disease/best.pt
+    └── annotation_{train,val,test}.json
 ```
 
 ### Dataset
@@ -180,3 +200,8 @@ annotations.
 > Wei, T., Chen, Z., Yu, X., Chapman, S., Melloy, P., Huang, Z. "PlantSeg: A
 > Large-Scale In-the-wild Dataset for Plant Disease Segmentation." arXiv
 > preprint arXiv:2409.04038, 2024.
+
+## License
+
+Released under the [MIT License](LICENSE). The PlantSeg dataset is separately
+licensed by its authors.

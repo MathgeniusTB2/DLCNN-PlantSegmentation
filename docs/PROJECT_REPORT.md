@@ -112,7 +112,9 @@ cd PlantDiseaseAPP
 python manage.py migrate && python manage.py runserver
 ```
 
-- Place trained weights at `PlantDiseaseAPP/plant_disease/best.pt`.
+- Place trained weights at `PlantDiseaseAPP/plant_disease/best.pt`, or fetch them
+  from a release with `python scripts/download_weights.py` (the app falls back to
+  a pretrained COCO model otherwise, which does not cover the 115 disease classes).
 - Standalone drone control: `python scripts/drone/drone_control.py`.
 - Training notebook: `training_plantseg.ipynb` (needs the PlantSeg dataset staged as
   `PlantDiseaseAPP/plantsegv3/`).
@@ -129,3 +131,14 @@ python manage.py migrate && python manage.py runserver
   them (now done in the conversion step) helps training stability.
 - **Live drone latency:** frame-skip keeps the feed usable on CPU; a GPU
   backend removes the need for it.
+- **Weights not in-repo:** the ~25 MB `best.pt` is gitignored to keep the
+  repository lightweight; it is distributed via a GitHub Release and fetched
+  with `scripts/download_weights.py`. Until it is uploaded, a fresh clone runs
+  on the COCO fallback.
+- **In-memory capture history:** `capture_history` lives in process memory, so
+  captures reset on server restart and don't survive across workers. Persisting
+  them to the database is left as future work.
+- **Shared camera stream:** `/video_feed/` and `/analysis_feed/` both read the
+  same `cv2.VideoCapture`, which can be flaky on some webcams when both are
+  open at once (the dashboard opens both). A dedicated capture thread per
+  source would remove this.

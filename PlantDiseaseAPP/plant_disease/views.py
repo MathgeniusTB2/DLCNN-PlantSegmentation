@@ -302,13 +302,25 @@ def cleanup():
         webcam.release()
 
 def capture_image(request):
-    global webcam
-    if webcam is None:
-        return JsonResponse({'error': 'No camera available'}, status=400)
-    
-    ret, frame = webcam.read()
-    if not ret:
-        return JsonResponse({'error': 'Failed to capture image'}, status=400)
+    global webcam, drone
+    source_type = request.GET.get('source', 'webcam')
+
+    if source_type == 'drone':
+        if drone is None:
+            return JsonResponse(
+                {'error': 'No drone available. Load the dashboard or a '
+                          'feed with ?source=drone first.'},
+                status=400
+            )
+        frame = drone.get_frame_read().frame
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    else:
+        if webcam is None:
+            return JsonResponse({'error': 'No camera available'}, status=400)
+
+        ret, frame = webcam.read()
+        if not ret:
+            return JsonResponse({'error': 'Failed to capture image'}, status=400)
     
     # Generate timestamp for filename
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

@@ -687,7 +687,11 @@
       const captureBtn = document.getElementById('capture-btn');
       captureBtn.addEventListener('click', async function() {
         try {
-          const response = await fetch('{% url "capture_image" %}');
+          const feedUrl = new URL(videoFeed.src, window.location.origin);
+          const sourceParam = feedUrl.searchParams.get('source') || '';
+          const captureUrl = "{% url 'capture_image' %}"
+            + (sourceParam ? '?source=' + encodeURIComponent(sourceParam) : '');
+          const response = await fetch(captureUrl);
           const data = await response.json();
           
           if (data.success) {
