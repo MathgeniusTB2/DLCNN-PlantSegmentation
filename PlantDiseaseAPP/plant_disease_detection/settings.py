@@ -33,7 +33,9 @@ SECRET_KEY = os.environ.get(
 # Set DEBUG=0 (and DJANGO_SECRET_KEY) when deploying.
 DEBUG = os.environ.get('DEBUG', '1') == '1'
 
-ALLOWED_HOSTS = []
+# Dev tool: '*' keeps runserver reachable on LAN (e.g. phone on the Tello's
+# WiFi). Restrict it (DJANGO_ALLOWED_HOSTS=host1,host2) when deploying.
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get('DJANGO_ALLOWED_HOSTS', '*').split(',')]
 
 
 # Application definition

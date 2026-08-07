@@ -24,8 +24,12 @@ FRAME_SKIP = max(1, getattr(settings, "MODEL_FRAME_SKIP", 3))
 # Demo mode: serve the dashboard from a folder of images instead of a camera
 # or drone (real inference still runs on each image). Set DEMO_IMAGES_DIR to a
 # folder of jpg/png files; the dashboard then defaults to this source, so the
-# app can be showcased without any hardware.
-DEMO_IMAGES_DIR = getattr(settings, "DEMO_IMAGES_DIR", "")
+# app can be showcased without any hardware. Falls back to the sample images
+# shipped in the repo (docs/demo_images/) when the env var is unset.
+_DEFAULT_DEMO_DIR = Path(settings.BASE_DIR).parent / "docs" / "demo_images"
+DEMO_IMAGES_DIR = getattr(settings, "DEMO_IMAGES_DIR", "") or (
+    str(_DEFAULT_DEMO_DIR) if _DEFAULT_DEMO_DIR.is_dir() else ""
+)
 DEMO_IMAGES = (
     sorted(p for p in Path(DEMO_IMAGES_DIR).iterdir()
            if p.suffix.lower() in {".jpg", ".jpeg", ".png"})
@@ -134,7 +138,7 @@ DISEASE_CLASSES = [
     'tobacco mosaic virus', 'tomato bacterial leaf spot', 'tomato early blight',
     'tomato late blight', 'tomato leaf mold', 'tomato mosaic virus',
     'tomato septoria leaf spot', 'tomato yellow leaf curl virus',
-    'wheat bacterial leaf streak', 'wheat head scab', 'wheat leaf rust',
+    'wheat bacterial leaf streak (black chaff)', 'wheat head scab', 'wheat leaf rust',
     'wheat loose smut', 'wheat powdery mildew', 'wheat septoria blotch',
     'wheat stem rust', 'wheat stripe rust', 'zucchini bacterial wilt',
     'zucchini downy mildew', 'zucchini powdery mildew',
@@ -153,9 +157,10 @@ def initialize_drone():
         drone.connect()
         drone.streamon()
         time.sleep(2)
+        logger.info("Drone connected and streaming")
         return True
     except Exception as e:
-        print(f"Failed to initialize drone: {e}")
+        logger.warning("Failed to initialize drone: %s", e)
         return False
 
 def initialize_webcam():
@@ -163,19 +168,19 @@ def initialize_webcam():
     try:
         webcam = cv2.VideoCapture(0)
         if webcam.isOpened():
-            print("Successfully opened camera")
+            logger.info("Successfully opened camera")
             return True
         webcam.release()
-        print("Failed to open camera")
+        logger.warning("Failed to open camera")
         return False
     except Exception as e:
-        print(f"Failed to initialize webcam: {e}")
+        logger.warning("Failed to initialize webcam: %s", e)
         return False
 
 def _read_frame(source_type):
     """Return the next frame for a source, or None if it is unavailable.
 
-    webcam/demo return BGR frames, drone returns RGB (to match prior behaviour).
+    All sources return BGR frames (the format ultralytics/OpenCV expect).
     """
     global webcam, drone, _demo_index
     if source_type == 'demo':
@@ -187,7 +192,7 @@ def _read_frame(source_type):
     if source_type == 'drone':
         if drone is None:
             return None
-        return cv2.cvtColor(drone.get_frame_read().frame, cv2.COLOR_BGR2RGB)
+        return drone.get_frame_read().frame
     if source_type == 'webcam':
         if webcam is None:
             return None
@@ -346,8 +351,9 @@ def capture_image(request):
     filename = f"capture_{timestamp}.jpg"
     filepath = CAPTURES_DIR / filename
     
-    # Run YOLO inference on the frame
-    results = get_model()(frame)
+    # Run YOLO inference on the frame (same resolution as the live feed so the
+    # captured analysis matches what is drawn on screen).
+    results = get_model().predict(frame, imgsz=INFERENCE_IMGSZ, verbose=False)
     
     # Draw detection boxes on the frame
     for result in results:

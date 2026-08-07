@@ -20,7 +20,7 @@ try:
         frame = frame_read.frame
 
         if frame is not None:
-            cv2.imshow("Tello Edu Feed", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+            cv2.imshow("Tello Edu Feed", frame)
 
         key = cv2.waitKey(1) & 0xFF
 

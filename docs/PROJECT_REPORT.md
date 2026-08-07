@@ -75,8 +75,9 @@ Observations:
 
 ## 4. Live inference
 
-The web app runs detection on the live webcam/drone stream. Measured throughput
-of the trained YOLOv8s on a mid-range laptop CPU (no GPU):
+The web app runs detection on the live webcam/drone stream. Single-forward-pass
+throughput of the trained YOLOv8s on a mid-range laptop CPU (no GPU),
+reproducible with [`scripts/benchmark.py`](../scripts/benchmark.py):
 
 | imgsz | Latency | FPS |
 |---|---|---|
@@ -84,8 +85,12 @@ of the trained YOLOv8s on a mid-range laptop CPU (no GPU):
 | 512 | 52 ms | **19 FPS** |
 | 640 | 84 ms | **12 FPS** |
 
-With the default feed settings (`imgsz=416`, `MODEL_FRAME_SKIP=3`) classification
-never bottlenecks a Tello's ~10–30 fps stream.
+These are raw model-throughput numbers. The feed additionally encodes frames
+and uses a frame-skip overlay, so detection *updates* land at a lower rate
+(~8.7 Hz at `FRAME_SKIP=3`) while the video stays smooth because the overlay
+persists between inference frames. With the default feed settings
+(`imgsz=416`, `MODEL_FRAME_SKIP=3`) classification never bottlenecks a Tello's
+~10–30 fps stream.
 
 A simulated drone flyover of PlantSeg crops (camera-motion feed with live
 detections at the measured FPS) is shown in
@@ -115,6 +120,9 @@ python manage.py migrate && python manage.py runserver
 - Place trained weights at `PlantDiseaseAPP/plant_disease/best.pt`, or fetch them
   from a release with `python scripts/download_weights.py` (the app falls back to
   a pretrained COCO model otherwise, which does not cover the 115 disease classes).
+- Demo mode (no webcam/drone): the repo ships six sample frames in
+  `docs/demo_images/`, so `python manage.py runserver` runs the full dashboard on
+  a fresh clone; point `DEMO_IMAGES_DIR` elsewhere to use your own images.
 - Standalone drone control: `python scripts/drone/drone_control.py`.
 - Training notebook: `training_plantseg.ipynb` (needs the PlantSeg dataset staged as
   `PlantDiseaseAPP/plantsegv3/`).
@@ -142,3 +150,11 @@ python manage.py migrate && python manage.py runserver
   same `cv2.VideoCapture`, which can be flaky on some webcams when both are
   open at once (the dashboard opens both). A dedicated capture thread per
   source would remove this.
+- **Global mutable state:** the webcam, drone, lazy model, and demo image
+  index are module-level singletons shared across threads; the lazy model load
+  has a benign but non-atomic double-load race. Fine for a single-process dev
+  demo; a production deployment would want per-source threads and a loaded-once
+  model.
+- **Capture is an unauthenticated GET:** `/capture/` writes an annotated image
+  and appends to history on GET with no auth — acceptable for local demos, not
+  for anything public.

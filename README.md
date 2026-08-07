@@ -29,7 +29,8 @@ capture and export results — with the model trained end-to-end on the
 
 - **Live YOLOv8 detection** — 115 disease classes on webcam or Tello drone
   streams (MJPEG video + SSE analysis in parallel)
-- **Real-time on CPU** — ~26 FPS at `imgsz=416` on a mid-range laptop
+- **Real-time on CPU** — ~26 FPS single-forward-pass inference at `imgsz=416`
+  on a mid-range laptop (see [benchmark](scripts/benchmark.py))
 - **Frame-skip pipeline** — inference every Nth frame with persistent overlay,
   so the feed stays smooth on modest hardware
 - **Capture & export** — one-click frame capture with annotations, history view,
@@ -51,22 +52,26 @@ capture and export results — with the model trained end-to-end on the
 ## Repository structure
 
 ```
-PlantDiseaseAPP/
-├── manage.py                    # Django entry point
-├── plant_disease_detection/     # Django project config (settings, urls)
-├── plant_disease/               # Django app: views, routes, templates, static
-│   ├── views.py                 # YOLO inference, video/analysis streaming, captures
-│   ├── templates/plant_disease/ # Web dashboard
-│   └── static/captures/         # Captured/analysed images (runtime)
-└── scripts/
-    ├── download_weights.py       # Fetch the trained 115-class weights
-    └── drone/                    # Standalone drone control + demo scripts
-training_plantseg.ipynb          # Training notebook (YOLOv8 + Faster R-CNN baseline)
-docs/PROJECT_REPORT.md           # Full project write-up
-docs/demo_drone_scan.gif         # Simulated drone flyover demo
-docs/dashboard.png               # Live dashboard screenshot
-requirements.txt                 # Web app dependencies
-requirements-training.txt        # Notebook/training dependencies
+├── PlantDiseaseAPP/
+│   ├── manage.py                    # Django entry point
+│   ├── plant_disease_detection/     # Django project config (settings, urls)
+│   ├── plant_disease/               # Django app: views, routes, templates, static
+│   │   ├── views.py                 # YOLO inference, video/analysis streaming, captures
+│   │   ├── templates/plant_disease/ # Web dashboard
+│   │   └── static/captures/         # Captured/analysed images (runtime)
+│   └── scripts/drone/               # Standalone drone control + demo scripts
+├── scripts/
+│   ├── download_weights.py          # Fetch the trained 115-class weights
+│   └── benchmark.py                 # Reproduce the inference FPS table
+├── training_plantseg.ipynb          # Training notebook (YOLOv8 + Faster R-CNN baseline)
+├── docs/
+│   ├── PROJECT_REPORT.md            # Full project write-up
+│   ├── demo_drone_scan.gif          # Simulated drone flyover demo
+│   ├── dashboard.png                # Live dashboard screenshot
+│   └── demo_images/                 # Sample images for demo mode (no hardware)
+├── requirements.txt                 # Web app dependencies
+├── requirements-training.txt        # Notebook/training dependencies
+└── LICENSE
 ```
 
 ## Quick start
@@ -91,10 +96,14 @@ detection overlay, per-frame disease analysis, capture history, and ZIP export.
 | `/`               | Dashboard                                       |
 | `/video_feed/`    | MJPEG stream (`?source=webcam` or `drone`, `?overlay=true`) |
 | `/analysis_feed/` | SSE disease analysis stream                     |
-| `/capture/`       | Capture + analyse the current frame             |
+| `/capture/`       | Capture + analyse the current frame (`?source=` matches the feed) |
 | `/history/`       | JSON capture history                            |
 | `/export/`        | Download all captures as a ZIP                  |
 | `/admin/`         | Django admin                                    |
+
+> Dev-only note: `/capture/` writes an annotated image and mutates the
+> in-memory history on a plain GET with no auth — fine for local demos, not for
+> anything public.
 
 ## Model performance
 
@@ -109,13 +118,19 @@ Blackwell GPU; best at epoch 77 (early-stopped at 95).
 | Precision / Recall | 0.393 / 0.357 |
 | Val set | 1,247 images / 8,926 instances |
 
-Live inference speed (CPU benchmark, trained model, 115 classes):
+Single-forward-pass inference throughput (CPU benchmark, trained model,
+115 classes; reproduce with [`scripts/benchmark.py`](scripts/benchmark.py)):
 
 | imgsz | Latency | FPS |
 |---|---|---|
 | 416 | 38 ms | **26 FPS** |
 | 512 | 52 ms | **19 FPS** |
 | 640 | 84 ms | **12 FPS** |
+
+Note: this measures a single model forward pass. The live feed additionally
+does frame encoding and a frame-skip overlay, so detection *updates* land at a
+lower rate (e.g. ~8.7 Hz at `FRAME_SKIP=3`) — still smooth because the overlay
+persists between inference frames.
 
 See [docs/PROJECT_REPORT.md](docs/PROJECT_REPORT.md) for the full training
 history, dataset details, and design trade-offs.
@@ -163,8 +178,9 @@ frame, so the whole UI works with no hardware:
 DEMO_IMAGES_DIR=/path/to/images python manage.py runserver
 ```
 
-The dashboard then defaults to this source automatically (`?source=demo` is
-also accepted). The screenshot above was captured this way.
+The repo ships six sample frames in `docs/demo_images/`, so demo mode works
+out of the box on a fresh clone (attribution in `docs/demo_images/README.md`).
+The dashboard screenshot above was captured this way.
 
 ## Drone (DJI Tello)
 
