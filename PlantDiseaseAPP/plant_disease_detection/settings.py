@@ -145,3 +145,8 @@ MODEL_SIZE = os.environ.get('MODEL_SIZE', 'n')
 MODEL_IMGSZ = int(os.environ.get('MODEL_IMGSZ', '416'))
 # Run inference only on every Nth frame; the overlay persists between runs.
 MODEL_FRAME_SKIP = int(os.environ.get('MODEL_FRAME_SKIP', '3'))
+
+# Optional demo mode: when set to a folder of jpg/png images, the dashboard
+# streams detection from those images instead of a webcam/drone, so the app can
+# be showcased without hardware. Unset (default) for normal camera behaviour.
+DEMO_IMAGES_DIR = os.environ.get('DEMO_IMAGES_DIR', '')

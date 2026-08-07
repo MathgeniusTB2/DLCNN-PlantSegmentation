@@ -21,6 +21,19 @@ FALLBACK_WEIGHTS = f"yolov8{getattr(settings, 'MODEL_SIZE', 'n')}.pt"
 INFERENCE_IMGSZ = getattr(settings, "MODEL_IMGSZ", 416)
 FRAME_SKIP = max(1, getattr(settings, "MODEL_FRAME_SKIP", 3))
 
+# Demo mode: serve the dashboard from a folder of images instead of a camera
+# or drone (real inference still runs on each image). Set DEMO_IMAGES_DIR to a
+# folder of jpg/png files; the dashboard then defaults to this source, so the
+# app can be showcased without any hardware.
+DEMO_IMAGES_DIR = getattr(settings, "DEMO_IMAGES_DIR", "")
+DEMO_IMAGES = (
+    sorted(p for p in Path(DEMO_IMAGES_DIR).iterdir()
+           if p.suffix.lower() in {".jpg", ".jpeg", ".png"})
+    if DEMO_IMAGES_DIR else []
+)
+DEFAULT_SOURCE = "demo" if DEMO_IMAGES else "webcam"
+_demo_index = 0
+
 _model = None
 
 
@@ -159,27 +172,36 @@ def initialize_webcam():
         print(f"Failed to initialize webcam: {e}")
         return False
 
-def generate_frames(source_type='webcam', show_overlay=True):
-    global drone, webcam
+def _read_frame(source_type):
+    """Return the next frame for a source, or None if it is unavailable.
 
+    webcam/demo return BGR frames, drone returns RGB (to match prior behaviour).
+    """
+    global webcam, drone, _demo_index
+    if source_type == 'demo':
+        if not DEMO_IMAGES:
+            return None
+        frame = cv2.imread(str(DEMO_IMAGES[_demo_index % len(DEMO_IMAGES)]))
+        _demo_index += 1
+        return frame
+    if source_type == 'drone':
+        if drone is None:
+            return None
+        return cv2.cvtColor(drone.get_frame_read().frame, cv2.COLOR_BGR2RGB)
+    if source_type == 'webcam':
+        if webcam is None:
+            return None
+        ret, frame = webcam.read()
+        return frame if ret else None
+    return None
+
+def generate_frames(source_type='webcam', show_overlay=True):
     frame_counter = 0
     last_detections = []
 
     while True:
-        frame = None
-        
-        if source_type == 'drone' and drone is not None:
-            frame = drone.get_frame_read().frame
-            # For drone, convert BGR to RGB
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        elif source_type == 'webcam' and webcam is not None:
-            ret, frame = webcam.read()
-            if not ret:
-                time.sleep(0.1)  # Add small delay before next attempt
-                continue
-            frame_rgb = frame
-        
-        if frame is None:
+        frame_rgb = _read_frame(source_type)
+        if frame_rgb is None:
             time.sleep(0.1)  # Add small delay before next attempt
             continue
 
@@ -200,25 +222,12 @@ def generate_frames(source_type='webcam', show_overlay=True):
                b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
 
 def generate_analysis(source_type='webcam'):
-    global drone, webcam
-
     frame_counter = 0
     last_detections = []
 
     while True:
-        frame = None
-        
-        if source_type == 'drone' and drone is not None:
-            frame = drone.get_frame_read().frame
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        elif source_type == 'webcam' and webcam is not None:
-            ret, frame = webcam.read()
-            if not ret:
-                time.sleep(0.1)  # Add small delay before next attempt
-                continue
-            frame_rgb = frame
-        
-        if frame is None:
+        frame_rgb = _read_frame(source_type)
+        if frame_rgb is None:
             time.sleep(0.1)  # Add small delay before next attempt
             continue
 
@@ -263,9 +272,12 @@ def index(request):
     return render(request, 'plant_disease/index.html')
 
 def video_feed(request):
-    source_type = request.GET.get('source', 'webcam')
+    source_type = request.GET.get('source', DEFAULT_SOURCE)
     show_overlay = request.GET.get('overlay', 'false').lower() == 'true'
-    
+
+    if source_type == 'demo' and not DEMO_IMAGES:
+        return HttpResponse("Demo mode is not configured. Set DEMO_IMAGES_DIR "
+                            "to a folder of images and restart.")
     if source_type == 'drone' and drone is None:
         if not initialize_drone():
             return HttpResponse("Failed to connect to drone")
@@ -279,8 +291,11 @@ def video_feed(request):
     )
 
 def analysis_feed(request):
-    source_type = request.GET.get('source', 'webcam')
-    
+    source_type = request.GET.get('source', DEFAULT_SOURCE)
+
+    if source_type == 'demo' and not DEMO_IMAGES:
+        return HttpResponse("Demo mode is not configured. Set DEMO_IMAGES_DIR "
+                            "to a folder of images and restart.")
     if source_type == 'drone' and drone is None:
         if not initialize_drone():
             return HttpResponse("Failed to connect to drone")
@@ -303,24 +318,28 @@ def cleanup():
 
 def capture_image(request):
     global webcam, drone
-    source_type = request.GET.get('source', 'webcam')
+    source_type = request.GET.get('source', DEFAULT_SOURCE)
 
-    if source_type == 'drone':
+    if source_type == 'demo':
+        if not DEMO_IMAGES:
+            return JsonResponse(
+                {'error': 'Demo mode is not configured. Set DEMO_IMAGES_DIR.'},
+                status=400
+            )
+    elif source_type == 'drone':
         if drone is None:
             return JsonResponse(
                 {'error': 'No drone available. Load the dashboard or a '
                           'feed with ?source=drone first.'},
                 status=400
             )
-        frame = drone.get_frame_read().frame
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    else:
+    elif source_type == 'webcam':
         if webcam is None:
             return JsonResponse({'error': 'No camera available'}, status=400)
 
-        ret, frame = webcam.read()
-        if not ret:
-            return JsonResponse({'error': 'Failed to capture image'}, status=400)
+    frame = _read_frame(source_type)
+    if frame is None:
+        return JsonResponse({'error': 'Failed to capture image'}, status=400)
     
     # Generate timestamp for filename
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

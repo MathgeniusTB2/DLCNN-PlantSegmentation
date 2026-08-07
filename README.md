@@ -21,6 +21,8 @@ capture and export results — with the model trained end-to-end on the
 
 ![Demo](docs/demo_drone_scan.gif)
 
+![Dashboard](docs/dashboard.png)
+
 ---
 
 ## Features
@@ -62,6 +64,7 @@ PlantDiseaseAPP/
 training_plantseg.ipynb          # Training notebook (YOLOv8 + Faster R-CNN baseline)
 docs/PROJECT_REPORT.md           # Full project write-up
 docs/demo_drone_scan.gif         # Simulated drone flyover demo
+docs/dashboard.png               # Live dashboard screenshot
 requirements.txt                 # Web app dependencies
 requirements-training.txt        # Notebook/training dependencies
 ```
@@ -144,10 +147,24 @@ detection.
 | `MODEL_SIZE`      | `n`     | Fallback model size (`n/s/m/l/x`) when `best.pt` is absent |
 | `MODEL_IMGSZ`     | `416`   | Inference input resolution                        |
 | `MODEL_FRAME_SKIP`| `3`     | Run inference every Nth frame; overlay persists between |
+| `DEMO_IMAGES_DIR` | *(empty)* | Folder of jpg/png images to stream instead of a webcam/drone — runs the full dashboard with no hardware |
 
 ```bash
 MODEL_SIZE=s MODEL_IMGSZ=512 MODEL_FRAME_SKIP=2 python manage.py runserver
 ```
+
+### Demo mode (no hardware)
+
+Set `DEMO_IMAGES_DIR` to a folder of images to stream the dashboard from
+static photos instead of a webcam or drone — real inference still runs on each
+frame, so the whole UI works with no hardware:
+
+```bash
+DEMO_IMAGES_DIR=/path/to/images python manage.py runserver
+```
+
+The dashboard then defaults to this source automatically (`?source=demo` is
+also accepted). The screenshot above was captured this way.
 
 ## Drone (DJI Tello)
 

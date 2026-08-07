@@ -30,3 +30,9 @@ class DashboardTests(TestCase):
         response = self.client.get(reverse('capture_image'))
         self.assertEqual(response.status_code, 400)
         self.assertIn('error', json.loads(response.content))
+
+    def test_demo_feed_reports_when_unconfigured(self):
+        views.DEMO_IMAGES = []
+        views.DEFAULT_SOURCE = 'webcam'
+        response = self.client.get(reverse('video_feed'), {'source': 'demo'})
+        self.assertContains(response, 'Demo mode is not configured')
