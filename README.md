@@ -45,8 +45,11 @@ capture and export results — with the model trained end-to-end on the
 | Layer | Tools |
 |---|---|
 | Deep learning | Ultralytics **YOLOv8**, PyTorch, OpenCV |
-| Web app | **Django** 4.2+, SSE, MJPEG streaming |
+| Web app | **Django** 4.2+, gunicorn, WhiteNoise, SSE, MJPEG streaming |
+| Database | **SQLite** (Django ORM — capture history persistence) |
 | Drone | **djitellopy** (DJI Tello API) |
+| Experiment tracking | **MLflow** (params, metrics, artifacts) |
+| Deploy / run | **Docker**, docker compose, Render (free tier) |
 | Training | Jupyter notebook, CUDA (CETUS HPC / SageMaker) |
 
 ## Repository structure
@@ -64,6 +67,11 @@ capture and export results — with the model trained end-to-end on the
 ├── scripts/
 │   ├── download_weights.py          # Fetch the trained 115-class weights
 │   └── benchmark.py                 # Reproduce the inference FPS table
+├── Dockerfile                       # Container image for the dashboard
+├── docker-compose.yml               # One-command local startup
+├── render.yaml                      # Free-tier Render (cloud) deployment
+├── Procfile                         # gunicorn entry point (PaaS compatible)
+├── .dockerignore
 ├── docs/
 │   ├── PROJECT_REPORT.md            # Full project write-up
 │   ├── demo_drone_scan.gif          # Simulated drone flyover demo
@@ -101,9 +109,51 @@ detection overlay, per-frame disease analysis, capture history, and ZIP export.
 | `/export/`        | Download all captures as a ZIP                  |
 | `/admin/`         | Django admin                                    |
 
-> Dev-only note: `/capture/` writes an annotated image and mutates the
-> in-memory history on a plain GET with no auth — fine for local demos, not for
-> anything public.
+> Dev-only note: `/capture/` writes an annotated image and a row to the SQLite
+> database on a plain GET with no auth — fine for local demos, not for anything
+> public. Capture history is persisted in the DB (see
+> `plant_disease/models.py`), so it survives app restarts.
+
+## Run with Docker
+
+The repo ships a ready-to-build container that runs the dashboard in **demo
+mode** (streams the bundled sample images — no camera or drone needed):
+
+```bash
+docker compose up --build          # or: docker build -t plantseg-dashboard . && docker run -p 8000:8000 plantseg-dashboard
+```
+
+Open http://localhost:8000. Captures are persisted in a named volume
+(`captures`). Set `DEMO_IMAGES_DIR` to a folder of your own images in
+`docker-compose.yml` to demo different scenes.
+
+## Deploy to a free cloud tier (Render)
+
+A [Render Blueprint](render.yaml) is included for free-tier deployment:
+
+1. Push this repository to GitHub.
+2. On Render: **New → Blueprint** → select this repo → **Create Resources**.
+3. Open the generated `https://<service>.onrender.com` URL.
+
+The blueprint runs `migrate` + `collectstatic` at build time, serves the app
+with gunicorn, and defaults to demo mode. Set `DEMO_IMAGES_DIR` if you want
+different demo images. (Render's free tier uses an ephemeral filesystem, so
+captured images do not persist across restarts there.)
+
+## Experiment tracking with MLflow
+
+The [training notebook](PlantDiseaseAPP/training_plantseg.ipynb) logs every
+run — hyper-parameters, validation metrics (mAP50, mAP50-95, precision,
+recall) and the trained weights — to **MLflow**:
+
+```bash
+pip install -r requirements-training.txt
+# in the notebook: run top to bottom; the MLflow cells auto-log the run
+mlflow ui --backend-store-uri file:./mlruns   # browse runs at http://localhost:5000
+```
+
+Set `MLFLOW_TRACKING_URI` to point at a remote tracking server
+(e.g. `http://localhost:5000`) to centralise experiments across machines.
 
 ## Model performance
 
