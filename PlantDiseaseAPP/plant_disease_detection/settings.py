@@ -52,6 +52,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -130,6 +131,9 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = [
     BASE_DIR / "plant_disease" / "static",
 ]
+# Where `manage.py collectstatic` copies assets for production serving
+# (WhiteNoise serves them directly in the deployed image / cloud tier).
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Media files (captured images, uploads)
 MEDIA_URL = '/media/'

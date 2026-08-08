@@ -1,0 +1,33 @@
+# VCS
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# Django runtime data
+db.sqlite3
+*.sqlite3
+media/
+staticfiles/
+runs/
+PlantDiseaseAPP/runs/
+
+# Experiment tracking
+mlruns/
+mlartifacts/
+
+# Model weights (downloaded at build time)
+*.pt
+*.pth
+*.h5
+*.weights
+
+# Docs/media already tracked
+docs/demo_drone_scan.gif
+docs/dashboard.png

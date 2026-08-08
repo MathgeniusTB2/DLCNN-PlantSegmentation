@@ -1,0 +1,24 @@
+# One-command startup for the PlantSeg dashboard (demo mode by default):
+#
+#   docker compose up --build
+#   -> open http://localhost:8000
+services:
+  web:
+    build: .
+    image: plantseg-dashboard
+    ports:
+      - "8000:8000"
+    environment:
+      DEBUG: "0"
+      DJANGO_ALLOWED_HOSTS: "*"
+      # Streams detections over the bundled sample images (no hardware needed).
+      # Point this at a folder of your own jpg/png files to demo other scenes.
+      DEMO_IMAGES_DIR: /app/docs/demo_images
+      MODEL_IMGSZ: "416"
+      MODEL_FRAME_SKIP: "3"
+    volumes:
+      # Persist dashboard captures across container restarts.
+      - captures:/app/PlantDiseaseAPP/plant_disease/static/captures
+
+volumes:
+  captures:

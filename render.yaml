@@ -1,0 +1,35 @@
+# Render Blueprint — free-tier deployment of the PlantSeg dashboard.
+#
+# 1. Push this repository to GitHub.
+# 2. On Render:  New -> Blueprint -> select this repo -> Create Resources.
+# 3. Open the generated https://...onrender.com URL (demo mode streams the
+#    bundled sample images; no camera or drone is required).
+services:
+  - type: web
+    name: plantseg-dashboard
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: |
+      pip install -r requirements.txt
+      python scripts/download_weights.py || true
+      cd PlantDiseaseAPP && python manage.py migrate --noinput && python manage.py collectstatic --noinput
+    startCommand: >-
+      cd PlantDiseaseAPP &&
+      gunicorn plant_disease_detection.wsgi:application
+      --bind 0.0.0.0:${PORT} --workers 1 --threads 4 --timeout 120
+    envVars:
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "0"
+      - key: DJANGO_ALLOWED_HOSTS
+        value: "*"
+      - key: DEMO_IMAGES_DIR
+        value: /opt/render/project/src/docs/demo_images
+      - key: MODEL_IMGSZ
+        value: "416"
+      - key: MODEL_FRAME_SKIP
+        value: "3"
+      - key: PYTHON_VERSION
+        value: "3.11.9"
