@@ -37,7 +37,6 @@ class DashboardTests(TestCase):
 
     def setUp(self):
         self._orig = {
-            "capture_history": views.capture_history,
             "webcam": views.webcam,
             "drone": views.drone,
             "demo_images": views.DEMO_IMAGES,
@@ -45,7 +44,6 @@ class DashboardTests(TestCase):
             "demo_index": views._demo_index,
             "get_model": views.get_model,
         }
-        views.capture_history = []
         views.webcam = None
         views.drone = None
         views.DEMO_IMAGES = []
@@ -54,7 +52,6 @@ class DashboardTests(TestCase):
         views.get_model = lambda: FakeModel({0: "apple scab"})
 
     def tearDown(self):
-        views.capture_history = self._orig["capture_history"]
         views.webcam = self._orig["webcam"]
         views.drone = self._orig["drone"]
         views.DEMO_IMAGES = self._orig["demo_images"]
@@ -73,7 +70,8 @@ class DashboardTests(TestCase):
         self.assertEqual(json.loads(response.content), {'history': []})
 
     def test_export_without_captures_returns_400(self):
-        views.capture_history = []
+        from plant_disease.models import DetectionCapture
+        DetectionCapture.objects.all().delete()
         response = self.client.get(reverse('export_results'))
         self.assertEqual(response.status_code, 400)
 
@@ -113,10 +111,12 @@ class DashboardTests(TestCase):
             self.assertTrue(data["filename"].endswith(".jpg"))
             self.assertEqual(data["analysis"][0]["name"], "apple scab")
             self.assertTrue((views.CAPTURES_DIR / data["filename"]).exists())
-            self.assertEqual(len(views.capture_history), 1)
+            from plant_disease.models import DetectionCapture
+            self.assertEqual(DetectionCapture.objects.count(), 1)
         finally:
             import shutil
             for f in views.CAPTURES_DIR.glob("capture_*.jpg"):
                 f.unlink(missing_ok=True)
             shutil.rmtree(tmp_dir, ignore_errors=True)
-            views.capture_history = []
+            from plant_disease.models import DetectionCapture
+            DetectionCapture.objects.all().delete()

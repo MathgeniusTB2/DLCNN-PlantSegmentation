@@ -10,6 +10,8 @@ from datetime import datetime
 import zipfile
 import io
 
+from .models import DetectionCapture
+
 logger = logging.getLogger(__name__)
 
 # Model weights - use a trained model if present, otherwise fall back to a
@@ -97,9 +99,6 @@ def class_name(cls):
 # Create captures directory if it doesn't exist
 CAPTURES_DIR = Path(settings.BASE_DIR) / "plant_disease" / "static" / "captures"
 CAPTURES_DIR.mkdir(parents=True, exist_ok=True)
-
-# Store capture history
-capture_history = []
 
 # Disease class names
 DISEASE_CLASSES = [
@@ -402,14 +401,13 @@ def capture_image(request):
             'confidence': 1.0,
             'description': 'No diseases detected in the current view.'
         })
-    
-    # Add to history
-    capture_info = {
-        'timestamp': timestamp,
-        'filename': filename,
-        'analysis': analysis_data
-    }
-    capture_history.append(capture_info)
+
+    # Persist the capture in the SQLite database (instead of an in-memory list).
+    DetectionCapture.objects.create(
+        timestamp=timestamp,
+        filename=filename,
+        analysis=analysis_data,
+    )
     
     return JsonResponse({
         'success': True,
@@ -418,24 +416,28 @@ def capture_image(request):
     })
 
 def get_history(request):
-    return JsonResponse({'history': capture_history})
+    history = list(
+        DetectionCapture.objects.values('timestamp', 'filename', 'analysis')
+    )
+    return JsonResponse({'history': history})
 
 def export_results(request):
-    if not capture_history:
+    captures = list(DetectionCapture.objects.all())
+    if not captures:
         return JsonResponse({'error': 'No captures to export'}, status=400)
     
     # Create a zip file in memory
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
         # Add each captured image to the zip
-        for capture in capture_history:
-            image_path = CAPTURES_DIR / capture['filename']
+        for capture in captures:
+            image_path = CAPTURES_DIR / capture.filename
             if image_path.exists():
                 # Read the image file
                 with open(image_path, 'rb') as f:
                     # Add to zip with timestamp in filename
                     zip_file.writestr(
-                        f"capture_{capture['timestamp']}.jpg",
+                        f"capture_{capture.timestamp}.jpg",
                         f.read()
                     )
     
